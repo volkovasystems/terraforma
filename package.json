@@ -21,5 +21,30 @@
   "bugs": {
     "url": "https://github.com/volkovasystems/terraforma/issues"
   },
-  "homepage": "https://github.com/volkovasystems/terraforma#readme"
+  "homepage": "https://github.com/volkovasystems/terraforma#readme",
+  "devDependencies": {
+    "connect": "^3.4.0",
+    "gulp": "^3.9.0",
+    "gulp-changed": "^1.2.1",
+    "gulp-clean": "^0.3.1",
+    "gulp-concat": "^2.6.0",
+    "gulp-embedlr": "^0.5.2",
+    "gulp-filter": "^2.0.2",
+    "gulp-flatten": "^0.1.0",
+    "gulp-insert": "^0.4.0",
+    "gulp-less": "^3.0.3",
+    "gulp-livereload": "^3.8.0",
+    "gulp-minify-css": "^1.2.0",
+    "gulp-order": "^1.1.1",
+    "gulp-plumber": "^1.0.1",
+    "gulp-react": "^3.0.1",
+    "gulp-rename": "^1.2.2",
+    "gulp-replace": "^0.5.3",
+    "gulp-sourcemaps": "^1.5.2",
+    "gulp-ssh": "^0.5.1",
+    "gulp-uglify": "^1.2.0",
+    "map-stream": "0.0.6",
+    "serve-static": "^1.10.0",
+    "yargs": "^3.15.0"
+  }
 }
