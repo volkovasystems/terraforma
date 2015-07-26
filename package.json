@@ -1,0 +1,25 @@
+{
+  "name": "terraforma",
+  "version": "0.0.0",
+  "description": "Gulp based, client files transform processor following strict architecture and specifications.",
+  "main": "terraforma.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/volkovasystems/terraforma.git"
+  },
+  "keywords": [
+    "terraform",
+    "gulp",
+    "client-processor",
+    "project-build-processor"
+  ],
+  "author": "Richeve S. Bebedor <richeve.bebedor@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/volkovasystems/terraforma/issues"
+  },
+  "homepage": "https://github.com/volkovasystems/terraforma#readme"
+}
