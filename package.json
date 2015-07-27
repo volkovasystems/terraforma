@@ -1,6 +1,6 @@
 {
   "name": "terraforma",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Gulp based, client files transform processor following strict architecture and specifications.",
   "main": "terraforma.min.js",
   "scripts": {
@@ -23,7 +23,7 @@
     "url": "https://github.com/volkovasystems/terraforma/issues"
   },
   "homepage": "https://github.com/volkovasystems/terraforma#readme",
-  "devDependencies": {
+  "dependencies": {
     "connect": "^3.4.0",
     "gulp": "^3.9.0",
     "gulp-changed": "^1.2.1",
