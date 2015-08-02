@@ -203,13 +203,13 @@ var terraforma = function terraforma( options ){
 			+ ".*?(\\s*)(?:\\-\\-\\>|\\*\\/)?(?: \\}?)?",
 		"gm" );
 
-	var steps = "./";
-	while( !fs.existsSync( path.resolve( steps, "script-list.js" ) ) ){
-		steps = "../" + steps;
+	var pathSteps = "./";
+	while( !fs.existsSync( path.resolve( pathSteps, "script-list.js" ) ) ){
+		pathSteps = "../" + pathSteps;
 	}
 
 	var scriptList = options.scriptList || 
-		require( path.resolve( steps, "script-list.js" ) );
+		require( path.resolve( pathSteps, "script-list.js" ) );
 
 	gulp.task( "default", [
 		"clean-library",
@@ -341,7 +341,7 @@ var terraforma = function terraforma( options ){
 					var templateFilePath = ( fileContent.match( TEMPLATE_PATTERN ) || [ ] )[ 1 ];
 
 					while( templateFilePath ){
-						templateFilePath = path.resolve( ".", "client", templateFilePath );
+						templateFilePath = path.resolve( pathSteps, "client", templateFilePath );
 
 						fileContent = fileContent.replace( TEMPLATE_PATTERN, [
 							" (", fs.readFileSync( templateFilePath ), ");"
@@ -360,7 +360,7 @@ var terraforma = function terraforma( options ){
 					var templateFilePath = ( fileContent.match( SUB_TEMPLATE_PATTERN ) || [ ] )[ 1 ];
 
 					while( templateFilePath ){
-						templateFilePath = path.resolve( ".", "client", templateFilePath );
+						templateFilePath = path.resolve( pathSteps, "client", templateFilePath );
 
 						fileContent = fileContent.replace( SUB_TEMPLATE_PATTERN, [
 							"", fs.readFileSync( templateFilePath ), ""
