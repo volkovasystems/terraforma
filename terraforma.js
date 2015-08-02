@@ -447,6 +447,7 @@ var terraforma = function terraforma( options ){
 					"client/library/*.ttf",
 					"client/library/*.woff"
 				] )
+				.pipe( plumber( ) )
 				.pipe( gulp.dest( "client/fonts" ) )
 				.pipe( gulp.dest( "build/fonts" ) );
 
@@ -647,6 +648,7 @@ var terraforma = function terraforma( options ){
 					"build/library/*.ttf",
 					"build/library/*.woff"
 				] )
+				.pipe( plumber( ) )
 				.pipe( gulp.dest( "deploy/fonts" ) );
 
 			if( argv.custom ){
