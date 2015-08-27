@@ -7,6 +7,9 @@ var uglify = require( "gulp-uglify" );
 var sourcemaps = require( "gulp-sourcemaps" );
 var rename = require( "gulp-rename" );
 var changed = require( "gulp-changed" );
+var cached = require( "gulp-cached" );
+var remember = require( "gulp-remember" );
+var newer = require( "gulp-newer" );
 var flatten = require( "gulp-flatten" );
 var replace = require( "gulp-replace" );
 var insert = require( "gulp-insert" );
@@ -208,8 +211,9 @@ var terraforma = function terraforma( options ){
 		pathSteps = "../" + pathSteps;
 	}
 
+	var scriptListPath = path.resolve( pathSteps, "script-list.js" );
 	var scriptList = options.scriptList || 
-		require( path.resolve( pathSteps, "script-list.js" ) );
+		require( scriptListPath );
 
 	gulp.task( "default", [
 		"clean-library",
@@ -257,49 +261,56 @@ var terraforma = function terraforma( options ){
 		"copy-library"
 	] );
 
+	//: This will remove only those that are older in the client/library
 	gulp.task( "clean-library",
 		function cleanTask( ){
 			return gulp
 				.src( "client/library", { "read": false } )
 				.pipe( plumber( ) )
+				.pipe( changed( "temp/library" ) )
 				.pipe( clean( { "force": true } ) );
 		} );
+
+	var libraryPaths = [
+		"bower_components/*/*.css",
+		"bower_components/*/*.map",
+		"bower_components/*/*.js",
+		"bower_components/*/*.eot",
+		"bower_components/*/*.svg",
+		"bower_components/*/*.ttf",
+		"bower_components/*/*.woff",
+
+		"bower_components/*/dist/**/*.eot",
+		"bower_components/*/dist/**/*.svg",
+		"bower_components/*/dist/**/*.ttf",
+		"bower_components/*/dist/**/*.woff",
+		"bower_components/*/dist/**/*.css",
+		"bower_components/*/dist/**/*.map",
+		"bower_components/*/dist/**/*.js",
+
+		"bower_components/*/lib/**/*.js",
+
+		"bower_components/*/build/**/*.js",
+		"bower_components/*/build/**/*.css",
+
+		"bower_components/*/css/*.css",
+
+		"bower_components/*/fonts/*.eot",
+		"bower_components/*/fonts/*.svg",
+		"bower_components/*/fonts/*.ttf",
+		"bower_components/*/fonts/*.woff"
+	];
 
 	gulp.task( "copy-library",
 		[ "clean-library" ],
 		function copyTask( ){
 			return gulp
-				.src( [
-					"bower_components/*/*.css",
-					"bower_components/*/*.map",
-					"bower_components/*/*.js",
-					"bower_components/*/*.eot",
-					"bower_components/*/*.svg",
-					"bower_components/*/*.ttf",
-					"bower_components/*/*.woff",
-
-					"bower_components/*/dist/**/*.eot",
-					"bower_components/*/dist/**/*.svg",
-					"bower_components/*/dist/**/*.ttf",
-					"bower_components/*/dist/**/*.woff",
-					"bower_components/*/dist/**/*.css",
-					"bower_components/*/dist/**/*.map",
-					"bower_components/*/dist/**/*.js",
-
-					"bower_components/*/lib/**/*.js",
-
-					"bower_components/*/build/**/*.js",
-					"bower_components/*/build/**/*.css",
-
-					"bower_components/*/css/*.css",
-
-					"bower_components/*/fonts/*.eot",
-					"bower_components/*/fonts/*.svg",
-					"bower_components/*/fonts/*.ttf",
-					"bower_components/*/fonts/*.woff"
-				].concat( options.libraryExceptions ) )
+				.src( libraryPaths.concat( options.libraryExceptions ) )
 				.pipe( plumber( ) )
+				.pipe( cached( "library", { "optimizeMemory": true } ) )
 				.pipe( flatten( ) )
+				.pipe( gulp.dest( "temp/library" ) )
+				.pipe( changed( "temp/library" ) )
 				.pipe( gulp.dest( "client/library" ) );
 		} );
 
@@ -326,6 +337,7 @@ var terraforma = function terraforma( options ){
 			return gulp
 				.src( sourcePaths, { "read": false } )
 				.pipe( plumber( ) )
+				.pipe( changed( "client" ) )
 				.pipe( clean( { "force": true } ) );
 		} );
 
@@ -335,6 +347,7 @@ var terraforma = function terraforma( options ){
 			var stream = gulp
 				.src( scriptList )
 				.pipe( plumber( ) )
+				.pipe( cached( "script:build", { "optimizeMemory": true } ) )
 				.pipe( map( function attachTemplate( file, callback ){
 					var fileContent = file.contents.toString( "utf8" );
 
@@ -386,6 +399,7 @@ var terraforma = function terraforma( options ){
 
 			stream = stream
 				.pipe( replace( CLEAN_UP_PATTERN, "" ) )
+				.pipe( remember( "script:build" ) )
 				.pipe( sourcemaps.init( ) )
 				.pipe( concat( [ APPLICATION_NAME, "js" ].join( "." ) ) )
 				.pipe( gulp.dest( "build/script" ) );
@@ -422,6 +436,7 @@ var terraforma = function terraforma( options ){
 			var stream = gulp
 				.src( "client/library/*.*" )
 				.pipe( plumber( ) )
+				.pipe( cached( "library:build", { "optimizeMemory": true } ) )
 				.pipe( gulp.dest( "build/library" ) );
 
 			if( argv.custom ){
@@ -448,6 +463,7 @@ var terraforma = function terraforma( options ){
 					"client/library/*.woff"
 				] )
 				.pipe( plumber( ) )
+				.pipe( cached( "font:build", { "optimizeMemory": true } ) )
 				.pipe( gulp.dest( "client/fonts" ) )
 				.pipe( gulp.dest( "build/fonts" ) );
 
@@ -470,6 +486,8 @@ var terraforma = function terraforma( options ){
 			return gulp
 				.src( "client/style/*.less" )
 				.pipe( plumber( ) )
+				.pipe( cached( "less:build", { "optimizeMemory": true } ) )
+				.pipe( remember( "less:build" ) )
 				.pipe( less( ) )
 				.pipe( filter( [ "app.css" ] ) )
 				.pipe( rename( [ APPLICATION_NAME, "css" ].join( "." ) ) )
@@ -516,6 +534,7 @@ var terraforma = function terraforma( options ){
 			var stream = gulp
 				.src( "client/image/*.*" )
 				.pipe( plumber( ) )
+				.pipe( cached( "image:build", { "optimizeMemory": true } ) )
 				.pipe( gulp.dest( "build/image" ) );
 
 			if( argv.custom ){
@@ -602,6 +621,7 @@ var terraforma = function terraforma( options ){
 					"build/script/*.map"
 				] )
 				.pipe( plumber( ) )
+				.pipe( cached( "script:deploy", { "optimizeMemory": true } ) )
 				.pipe( gulp.dest( "deploy/script" ) );
 
 			if( argv.custom ){
@@ -623,6 +643,7 @@ var terraforma = function terraforma( options ){
 			var stream = gulp
 				.src( "build/library/*.*" )
 				.pipe( plumber( ) )
+				.pipe( cached( "library:deploy", { "optimizeMemory": true } ) )
 				.pipe( gulp.dest( "deploy/library" ) );
 
 			if( argv.custom ){
@@ -649,6 +670,7 @@ var terraforma = function terraforma( options ){
 					"build/library/*.woff"
 				] )
 				.pipe( plumber( ) )
+				.pipe( cached( "font:deploy", { "optimizeMemory": true } ) )
 				.pipe( gulp.dest( "deploy/fonts" ) );
 
 			if( argv.custom ){
@@ -673,6 +695,7 @@ var terraforma = function terraforma( options ){
 					"build/style/*.map"
 				] )
 				.pipe( plumber( ) )
+				.pipe( cached( "style:deploy", { "optimizeMemory": true } ) )
 				.pipe( gulp.dest( "deploy/style" ) );
 
 			if( argv.custom ){
@@ -694,6 +717,7 @@ var terraforma = function terraforma( options ){
 			var stream = gulp
 				.src( "build/image/*.*" )
 				.pipe( plumber( ) )
+				.pipe( cached( "image:deploy", { "optimizeMemory": true } ) )
 				.pipe( gulp.dest( "deploy/image" ) );
 
 			if( argv.custom ){
@@ -776,8 +800,9 @@ var terraforma = function terraforma( options ){
 				"client/script/**",
 				"client/style/**",
 				"client/template/**",
-				"client/index.html"
-			],
+				"client/index.html",
+				scriptListPath
+			].concat( libraryPaths ),
 			[ "reload" ] );
 		} );
 
@@ -797,8 +822,10 @@ var terraforma = function terraforma( options ){
 				"client/script/**",
 				"client/style/**",
 				"client/template/**",
-				"client/index.html"
-			],
+				"client/script/**",
+				"client/index.html",
+				scriptListPath
+			].concat( libraryPaths ),
 			[ "reload" ] );
 		} );
 }
