@@ -1,6 +1,6 @@
 {
   "name": "terraforma",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Gulp based, client files transform processor following strict architecture and specifications.",
   "main": "terraforma.min.js",
   "scripts": {
