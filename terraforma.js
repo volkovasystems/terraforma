@@ -1,7 +1,8 @@
 "use strict";
 
 var gulp = require( "gulp" );
-var clean = require( "gulp-clean" );
+var del = require( "del" );
+var vinylPaths = require( "vinyl-paths" );
 var concat = require( "gulp-concat" );
 var uglify = require( "gulp-uglify" );
 var sourcemaps = require( "gulp-sourcemaps" );
@@ -253,7 +254,7 @@ var terraforma = function terraforma( options ){
 			return gulp
 				.src( "temp", { "read": false } )
 				.pipe( plumber( ) )
-				.pipe( clean( { "force": true } ) );
+				.pipe( vinylPaths( del ) );
 		} );
 
 	gulp.task( "link-library", [
@@ -268,7 +269,7 @@ var terraforma = function terraforma( options ){
 				.src( "client/library", { "read": false } )
 				.pipe( plumber( ) )
 				.pipe( changed( "temp/library" ) )
-				.pipe( clean( { "force": true } ) );
+				.pipe( vinylPaths( del ) );
 		} );
 
 	var libraryPaths = [
@@ -338,7 +339,7 @@ var terraforma = function terraforma( options ){
 				.src( sourcePaths, { "read": false } )
 				.pipe( plumber( ) )
 				.pipe( changed( "client" ) )
-				.pipe( clean( { "force": true } ) );
+				.pipe( vinylPaths( del ) );
 		} );
 
 	gulp.task( "build-script",
@@ -609,7 +610,7 @@ var terraforma = function terraforma( options ){
 			return gulp
 				.src( "deploy", { "read": false } )
 				.pipe( plumber( ) )
-				.pipe( clean( { "force": true } ) );
+				.pipe( vinylPaths( del ) );
 		} );
 
 	gulp.task( "deploy-script",
