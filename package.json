@@ -1,10 +1,9 @@
 {
   "name": "terraforma",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Gulp based, client files transform processor following strict architecture and specifications.",
   "main": "terraforma.min.js",
   "scripts": {
-    "postinstall": "gulp",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
