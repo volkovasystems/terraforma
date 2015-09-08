@@ -818,13 +818,11 @@ var terraforma = function terraforma( options ){
 			server
 				.use( serveStatic( "build" ) )
 				.listen( portNumber, "localhost", done );
-		} )
-
-	var server = livereload( );
+		} );
 
 	gulp.task( "reload", [ "build" ],
 		function reloadTask( done ){
-			server.changed( );
+			livereload.reload( );
 			done( );
 		} );
 
@@ -841,6 +839,7 @@ var terraforma = function terraforma( options ){
 			"server-static"
 		],
 		function watchTask( ){
+			livereload.listen( );
 			gulp.watch( [
 				"client/script/**",
 				"client/style/**",
@@ -863,11 +862,11 @@ var terraforma = function terraforma( options ){
 			"build-index"
 		],
 		function watchTask( ){
+			livereload.listen( );
 			gulp.watch( [
 				"client/script/**",
 				"client/style/**",
 				"client/template/**",
-				"client/script/**",
 				"client/index.html",
 				scriptListPath
 			].concat( libraryPaths ),
