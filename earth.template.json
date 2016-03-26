@@ -1,0 +1,15 @@
+{
+	"appName": "app",
+	"sourcePath": "client",
+	"destinationPath": "build",
+	"libraryPathList": [ ],
+	"scriptPathList": [ ],
+	"cloud": {
+		"destinationPath": "deploy"
+	},
+	"ground": {
+		"destinationPath": "stage"
+	},
+	"water": { },
+	"mobile": { }
+}

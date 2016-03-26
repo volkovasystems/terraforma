@@ -1,10 +1,11 @@
 "use strict";
 
-/*:
+/*:!
 	@module-license:
 		The MIT License (MIT)
 
-		Copyright (c) 2015 Richeve Siodina Bebedor
+		Copyright (@c) 2015 Richeve Siodina Bebedor
+		@email: richeve.bebedor@gmail.com
 
 		Permission is hereby granted, free of charge, to any person obtaining a copy
 		of this software and associated documentation files (the "Software"), to deal
@@ -39,374 +40,492 @@
 	@end-module-configuration
 
 	@module-documentation:
-
+		This is a straightforward mega function that configures
+			your basic gulp tasks towards a concise and specified architecture.
 	@end-module-documentation	
 */
 
-
+var _  = require( "lodash" );
+var harden = require( "harden" );
 var gulp = require( "gulp" );
-var del = require( "del" );
-var vinylPaths = require( "vinyl-paths" );
-var concat = require( "gulp-concat" );
-var uglify = require( "gulp-uglify" );
-var sourcemaps = require( "gulp-sourcemaps" );
-var rename = require( "gulp-rename" );
-var changed = require( "gulp-changed" );
-var cached = require( "gulp-cached" );
-var remember = require( "gulp-remember" );
-var newer = require( "gulp-newer" );
-var flatten = require( "gulp-flatten" );
-var replace = require( "gulp-replace" );
-var insert = require( "gulp-insert" );
-var react = require( "gulp-react" );
-var minifyCSS = require( "gulp-minify-css" );
-var less = require( "gulp-less" );
-var filter = require( "gulp-filter" );
-var livereload = require( "gulp-livereload" );
-var embedlr = require( "gulp-embedlr" );
-var plumber = require( "gulp-plumber" );
-
-var connect = require( "connect" );
-var serveStatic = require( "serve-static" );
-var map = require( "map-stream" );
 var fs = require( "fs" );
 var path = require( "path" );
 var argv = require( "yargs" ).argv;
+var changed = require( "gulp-changed" );
+var plumber = require( "gulp-plumber" );
+var del = require( "del" );
+var vinylPath = require( "vinyl-paths" );
+var map = require( "map-stream" );
+var concat = require( "gulp-concat" );
+var rename = require( "gulp-rename" );
+var less = require( "gulp-less" );
+var sass = require( "gulp-sass" );
+var cached = require( "gulp-cached" );
+var flatten = require( "gulp-flatten" );
+var babel = require( "gulp-babel" );
+var parameta = require( "parameta" );
+var util = require( "util" );
+var uglify = require( "gulp-uglify" );
+var cssnano = require( "gulp-cssnano" );
+var sourcemap = require( "gulp-sourcemaps" );
+var order = require( "gulp-order" );
 
-var terraforma = function terraforma( options ){
-	var INCLUDE_SCRIPT_PATTERN = new RegExp(
-		"(?:\\<\\!\\-\\-\\:)?(\\s*).*?"
-			+ "\\@include\\-script\\:"
-				+ '(\\"[^\\"]+?\\")'
-			+ ".*?(\\s*)(?:\\-\\-\\>)?",
-		"g" );
-	var INCLUDE_STYLE_PATTERN = new RegExp(
-		"(?:\\<\\!\\-\\-\\:)?(\\s*).*?"
-			+ "\\@include\\-style\\:"
-				+ '(\\"[^\\"]+?\\")'
-			+ ".*?(\\s*)(?:\\-\\-\\>)?",
-		"g" );
+harden( "ROOT_DIRECTORY", __dirname, global );
 
-	var MINIFIED_SCRIPT_PATTERN = /\.min\./g;
-	var MINIFIED_STYLE_PATTERN = /\.min\./g;
+var terraforma = function terraforma( option ){
+	gulp.task( "initialize",
+		function initializeTask( ){
+			var earthJSONPath = path.resolve( ROOT_DIRECTORY, "earth.json" );
 
-	var INCLUDE_SCRIPT_REPLACER = "$1<script type=\"text/javascript\" src=$2></script>$3";
-	var INCLUDE_STYLE_REPLACER = "$1<link rel=\"stylesheet\" type=\"text/css\" href=$2>$3";
+			try{
+				if( !fs.existsSync( earthJSONPath ) ){
+					var template = fs.readFileSync( "./earth.template.json", "utf8" );
 
-	var REACTJS_DOM_FLAG = "/** @jsx React.DOM */\n";
-	var REACTJS_DOM_FLAG_PATTERN = /\/\*\*\s*\@jsx\s+React\.DOM\s*\*\/\n/g;
-	var REACTJS_DOM_FLAG_REPLACER = "";
+					template = JSON.parse( template );
 
-	var PRODUCTION_MODE_PATTERN = new RegExp(
-		"(?:\\{?\\s*)?(?:\\<\\!\\-\\-\\:|\\/\\*\\:|\\/\\/\\:)?(\\s*).*?"
-			+ "\\@production\\-mode\\:"
-				+ "(?:\\s*\\*\\/ \\}?)?\\s*"
-					+ "([^]+?)\\s*"
-				+ "(?:\\{?\\s*\\/\\*\\s*|\\/\\/\\:\\s*)?"
-			+"\\@end\\-production\\-mode"
-		+ ".*?(\\s*)(?:\\-\\-\\>|\\*\\/)?(?: \\}?)?",
-		"gm" );
-	var PRODUCTION_MODE_REPLACER = "\n$1$2$3\n";
+					template = _.extend( template, option );
 
-	var DEVELOPMENT_MODE_PATTERN = new RegExp(
-		"(?:\\{?\\s*)?(?:\\<\\!\\-\\-\\:|\\/\\*\\:|\\/\\/\\:)?(\\s*).*?"
-			+ "\\@development\\-mode\\:"
-				+ "(?:\\s*\\*\\/ \\}?)?\\s*"
-					+ "([^]+?)\\s*"
-				+ "(?:\\{?\\s*\\/\\*\\s*|\\/\\/\\:\\s*)?"
-			+ "\\@end\\-development\\-mode"
-		+ ".*?(\\s*)(?:\\-\\-\\>|\\*\\/)?(?: \\}?)?",
-		"gm" );
-	var DEVELOPMENT_MODE_REPLACER = "\n$1$2$3\n";
+					template = JSON.stringify( template, null, "\t" );
 
-	var CLIENT_MODE_PATTERN = new RegExp(
-		"(?:\\{?\\s*)?(?:\\<\\!\\-\\-\\:|\\/\\*\\:|\\/\\/\\:)?(\\s*).*?"
-			+ "\\@client\\-mode\\:"
-				+ "(?:\\s*\\*\\/ \\}?)?\\s*"
-					+ "([^]+?)\\s*"
-				+ "(?:\\{?\\s*\\/\\*\\s*|\\/\\/\\:\\s*)?"
-			+ "\\@end\\-client\\-mode"
-		+ ".*?(\\s*)(?:\\-\\-\\>|\\*\\/)?(?: \\}?)?",
-		"gm" );
-	var CLIENT_MODE_REPLACER = "\n$1$2$3\n";
+					fs.writeFileSync( earthJSONPath, template, "utf8" );
+				}
 
-	var ADMINISTRATOR_MODE_PATTERN = new RegExp(
-		"(?:\\{?\\s*)?(?:\\<\\!\\-\\-\\:|\\/\\*\\:|\\/\\/\\:)?(\\s*).*?"
-			+ "\\@administrator\\-mode\\:"
-				+ "(?:\\s*\\*\\/ \\}?)?\\s*"
-					+ "([^]+?)\\s*"
-				+ "(?:\\{?\\s*\\/\\*\\s*|\\/\\/\\:\\s*)?"
-			+ "\\@end\\-administrator\\-mode"
-		+ ".*?(\\s*)(?:\\-\\-\\>|\\*\\/)?(?: \\}?)?",
-		"gm" );
-	var ADMINISTRATOR_MODE_REPLACER = "\n$1$2$3\n";
+			}catch( error ){
+				console.log( "possible error during earth.json template transfer",
+					util.inspect( error ) );
 
-	var ADMINISTRATOR_DEVELOPMENT_MODE_PATTERN = new RegExp(
-		"(?:\\{?\\s*)?(?:\\<\\!\\-\\-\\:|\\/\\*\\:|\\/\\/\\:)?(\\s*).*?"
-			+ "\\@administrator-development\\-mode\\:"
-				+ "(?:\\s*\\*\\/ \\}?)?\\s*"
-					+ "([^]+?)\\s*"
-				+ "(?:\\{?\\s*\\/\\*\\s*|\\/\\/\\:\\s*)?"
-			+ "\\@end\\-administrator-development\\-mode"
-		+ ".*?(\\s*)(?:\\-\\-\\>|\\*\\/)?(?: \\}?)?",
-		"gm" );
-	var ADMINISTRATOR_DEVELOPMENT_MODE_REPLACER = "\n$1$2$3\n";
+				if( !fs.existsSync( earthJSONPath ) ){
+					console.log( "earth.json is not created properly, terraforma will crumble" );
 
-	var ADMINISTRATOR_PRODUCTION_MODE_PATTERN = new RegExp(
-		"(?:\\{?\\s*)?(?:\\<\\!\\-\\-\\:|\\/\\*\\:|\\/\\/\\:)?(\\s*).*?"
-			+ "\\@administrator-production\\-mode\\:"
-				+ "(?:\\s*\\*\\/ \\}?)?\\s*"
-					+ "([^]+?)\\s*"
-				+ "(?:\\{?\\s*\\/\\*\\s*|\\/\\/\\:\\s*)?"
-			+ "\\@end\\-administrator-production\\-mode"
-		+ ".*?(\\s*)(?:\\-\\-\\>|\\*\\/)?(?: \\}?)?",
-		"gm" );
-	var ADMINISTRATOR_PRODUCTION_MODE_REPLACER = "\n$1$2$3\n";
-
-	var ADMINISTRATOR_ALL_MODE_PATTERN = new RegExp(
-		"(?:\\{?\\s*)?(?:\\<\\!\\-\\-\\:|\\/\\*\\:|\\/\\/\\:)?(\\s*).*?"
-			+ "\\@administrator\\-(?:development|production)\\-mode\\:"
-				+ "(?:\\s*\\*\\/ \\}?)?\\s*"
-					+ "([^]+?)\\s*"
-				+ "(?:\\{?\\s*\\/\\*\\s*|\\/\\/\\:\\s*)?"
-			+ "\\@end\\-administrator\\-(?:development|production)\\-mode"
-		+ ".*?(\\s*)(?:\\-\\-\\>|\\*\\/)?(?: \\}?)?",
-		"gm" );
-
-	var CLEAN_UP_PATTERN = new RegExp(
-		"(?:\\{?\\s*)?(?:\\<\\!\\-\\-\\:|\\/\\*\\:)?(\\s*).*?"
-			+ "\\@[a-z\\-]*[a-z]\\-mode\\:"
-				+ "(?:\\s*\\*\\/ \\}?)?\\s*"
-				+ "([^]+?)\\s*"
-				+ "(?:\\{?\\s*\\/\\*\\s*|\\/\\/\\:\\s*)?"
-			+ "\\@end\\-[a-z][a-z\\-]*[a-z]\\-mode"
-		+ ".*?(\\s*)(?:\\-\\-\\>|\\*\\/)?(?: \\}?)?",
-		"gm" );
-
-	var TEMPLATE_PATTERN = new RegExp(
-		"(?:\\{?\\s*\\/\\*\\:|\\;\\s*\\/\\/\\:)?\\s*"
-			+ "\\@template\\:"
-				+ "\\s*([^\\s]+)"
-		+ "\\s*(?:\\*\\/ \\}?)?" );
-
-	var SUB_TEMPLATE_PATTERN = new RegExp(
-		"(?:\\{?\\s*\\/\\*\\:|\\;\\s*\\/\\/\\:)?\\s*"
-			+ "\\@sub-template\\:"
-				+ "\\s*([^\\s]+)"
-		+ "\\s*(?:\\*\\/ \\}?)?" );
-
-	var APPLICATION_NAME = argv.appName || options.appName;
-
-	var MODE_PATTERN = null;
-	var MODE_REPLACER = null;
-	if( argv.production ){
-		MODE_PATTERN = PRODUCTION_MODE_PATTERN;
-		MODE_REPLACER = PRODUCTION_MODE_REPLACER;
-
-	}else if( argv.development ){
-		MODE_PATTERN = DEVELOPMENT_MODE_PATTERN;
-		MODE_REPLACER = DEVELOPMENT_MODE_REPLACER;
-
-	}else{
-		throw new Error( "no mode provided" );
-	}
-
-	var ADMINISTRATOR_GENERAL_MODE_PATTERN = null;
-	var ADMINISTRATOR_GENERAL_MODE_REPLACER = null;
-	if( argv.administrator ){
-		ADMINISTRATOR_GENERAL_MODE_PATTERN = ADMINISTRATOR_MODE_PATTERN;
-		ADMINISTRATOR_GENERAL_MODE_REPLACER = ADMINISTRATOR_MODE_REPLACER;
-		CLIENT_MODE_REPLACER = "\n";
-
-	}else{
-		ADMINISTRATOR_GENERAL_MODE_PATTERN = ADMINISTRATOR_MODE_PATTERN;
-		ADMINISTRATOR_GENERAL_MODE_REPLACER = "\n";
-	}
-
-	var ADMINISTRATOR_SPECIFIC_MODE_PATTERN = null;
-	var ADMINISTRATOR_SPECIFIC_MODE_REPLACER = null;
-	if( argv.administrator && argv.production ){
-		ADMINISTRATOR_SPECIFIC_MODE_PATTERN = ADMINISTRATOR_PRODUCTION_MODE_PATTERN;
-		ADMINISTRATOR_SPECIFIC_MODE_REPLACER = ADMINISTRATOR_PRODUCTION_MODE_REPLACER;
-
-	}else if( argv.administrator && argv.development ){
-		ADMINISTRATOR_SPECIFIC_MODE_PATTERN = ADMINISTRATOR_DEVELOPMENT_MODE_PATTERN;
-		ADMINISTRATOR_SPECIFIC_MODE_REPLACER = ADMINISTRATOR_DEVELOPMENT_MODE_REPLACER;
-
-	}else{
-		ADMINISTRATOR_SPECIFIC_MODE_PATTERN = ADMINISTRATOR_ALL_MODE_PATTERN;
-		ADMINISTRATOR_SPECIFIC_MODE_REPLACER = "\n";
-	}
-
-	var customBuild = argv.custom || options.custom || "";
-
-	var CUSTOM_MODE_REPLACER = "\n$1$2$3\n";
-
-	var CUSTOM_MODE_PATTERN = new RegExp(
-		"(?:\\{?\\s*)?(?:\\<\\!\\-\\-\\:|\\/\\*\\:|\\/\\/\\:)?(\\s*).*?"
-			+ "\\@custom\\-mode\\:(?:\\s*\\*\\/ \\}?)?\\s*([^]+?)\\s*"
-				.replace( "custom", argv.custom )
-			+ "(?:\\{?\\s*\\/\*\\s*|\\/\\/\\:\\s*)?\\@end\\-custom\\-mode"
-				.replace( "custom", argv.custom )
-			+ ".*?(\\s*)(?:\\-\\-\\>|\\*\\/)?(?: \\}?)?",
-		"gm" );
-
-	var pathSteps = "./";
-	while( !fs.existsSync( path.resolve( pathSteps, "script-list.js" ) ) ){
-		pathSteps = "../" + pathSteps;
-	}
-
-	var scriptListPath = path.resolve( pathSteps, "script-list.js" );
-	var scriptList = options.scriptList || 
-		require( scriptListPath );
-
-	gulp.task( "default", [
-		"clean-library",
-		"clean-build",
-		"clean-deploy",
-
-		"copy-library",
-		"build-library",
-		"deploy-library",
-
-		"build-font",
-		"deploy-font",
-
-		"build-script",
-		"deploy-script",
-
-		"build-less",
-		"build-style",
-		"deploy-style",
-
-		"build-image",
-		"deploy-image",
-
-		"build-index",
-		"deploy-index"
-	] );
-
-	gulp.task( "clean", [
-		"clean-library",
-		"clean-build",
-		"clean-deploy",
-		"clean-temp"
-	] );
-
-	gulp.task( "clean-temp",
-		function cleanTask( ){
+					process.exit( 0 );
+				}
+			}
+			
 			return gulp
-				.src( "temp", { "read": false } )
-				.pipe( plumber( ) )
-				.pipe( vinylPaths( del ) );
+				.src( earthJSONPath )
+				
+				.pipe( map( function attachTemplate( file, callback ){
+					//: Prioritize given parameter options over configuration.
+					option = _.extend( option || { },
+						JSON.parse( file.contents.toString( "utf8" ) || "{ }" ) );
+					harden( "OPTION", option, global );
+
+					/*:
+						The name of the application appended to the created folder name.
+					*/
+					harden( "APPLICATION_NAME", 
+						argv.appName || option.appName || "app", 
+						global );
+
+					/*:
+						Terraform mode are simple modes that transform the app.
+						1. cloud - production
+							-this will create a deploy folder
+						
+						2. ground - testing (development/staging)
+							-this will create a stage folder
+
+						3. water - local (default)
+							-this will create a build folder
+
+						4. moon - mobile
+							a. moon:ios
+								-build for ios devices
+								-creates an ios folder
+
+							b. moon:android
+								-build for android devices
+								-creates an android folder
+
+							c. moon:web (default)
+								-build as a web app for mobile devices
+								-creates a mobile folder
+					*/
+					var mode = argv.mode || option.mode;
+
+					if( argv.cloud ){
+						mode = "cloud";
+					
+					}else if( argv.ground ){
+						mode = "ground";
+					
+					}else if( argv.ios ){
+						mode = "mobile:ios";
+					
+					}else if( argv.android ){
+						mode = "mobile:android";
+					
+					}else if( argv.mobile ){
+						mode = "mobile";
+					
+					}else if( !mode ){
+						mode = "water";
+					}
+
+					harden( "TERRAFORM_MODE", 
+						mode.split( ":" )[ 0 ], 
+						global );
+
+					if( (/^moon\:/).test( mode ) ){
+						harden( "MOBILE_MODE", mode.split( ":" )[ 1 ], global );
+					}
+
+					if( !option.destinationPath ){
+						if( TERRAFORM_MODE == "cloud" ){
+							option.destinationPath = "deploy";
+						
+						}else if( TERRAFORM_MODE == "ground" ){
+							option.destinationPath = "stage";
+						
+						}else if( TERRAFORM_MODE == "moon" &&
+							!global.MOBILE_MODE )
+						{
+							option.destinationPath = "mobile"
+						
+						}else{
+							option.destinationPath = "build";
+						}	
+					}
+
+					harden( "SOURCE_PATH", 
+						path.resolve( ROOT_DIRECTORY, 
+							argv.sourcePath || 
+							option[ TERRAFORM_MODE || "water" ].sourcePath ||
+							option.sourcePath || 
+							"client" ),
+						global );
+
+					harden( "DESTINATION_PATH",
+						path.resolve( ROOT_DIRECTORY,
+							[ 
+								( argv.destinationPath || 
+								( global.MOBILE_MODE? MOBILE_MODE : "" ) ||
+								option[ TERRAFORM_MODE || "water" ].destinationPath ||
+								option.destinationPath ),
+								APPLICATION_NAME
+							].join( "-" ) ),
+						global );
+					
+					var defaultLibraryPathList = [
+						"bower_components/*/*.css",
+						"bower_components/*/*.map",
+						"bower_components/*/*.js",
+						"bower_components/*/*.eot",
+						"bower_components/*/*.svg",
+						"bower_components/*/*.ttf",
+						"bower_components/*/*.woff",
+
+						"bower_components/*/dist/**/*.eot",
+						"bower_components/*/dist/**/*.svg",
+						"bower_components/*/dist/**/*.ttf",
+						"bower_components/*/dist/**/*.woff",
+						"bower_components/*/dist/**/*.css",
+						"bower_components/*/dist/**/*.map",
+						"bower_components/*/dist/**/*.js",
+
+						"bower_components/*/lib/**/*.js",
+
+						"bower_components/*/build/**/*.js",
+						"bower_components/*/build/**/*.css",
+
+						"bower_components/*/css/*.css",
+
+						"bower_components/*/fonts/*.eot",
+						"bower_components/*/fonts/*.svg",
+						"bower_components/*/fonts/*.ttf",
+						"bower_components/*/fonts/*.woff"
+					];
+
+					//: The library path configuration for library transfer.
+					var libraryPathList = _.union( defaultLibraryPathList, option.libraryPathList )
+						.map( function onEachLibraryPath( libraryPath ){
+							return path.resolve( ROOT_DIRECTORY, libraryPath );
+						} );
+					harden( "LIBRARY_PATH_LIST", libraryPathList, global );
+
+					var initialLibraryPath = path.join( ROOT_DIRECTORY, "bower_components" );
+					harden( "INITIAL_LIBRARY_PATH", initialLibraryPath, global );
+
+					var sourceLibraryPath = path.join( SOURCE_PATH, "library" );
+					harden( "SOURCE_LIBRARY_PATH", sourceLibraryPath, global );
+
+					var destinationLibraryPath = path.join( DESTINATION_PATH, "library" );
+					harden( "DESTINATION_LIBRARY_PATH", destinationLibraryPath, global );
+
+					var negatedLibraryPath = "!" + path.resolve( SOURCE_PATH, "library/**/*.*" );
+					harden( "NEGATED_LIBRARY_PATH", negatedLibraryPath, global );
+
+					var sourceFontPath = path.resolve( SOURCE_PATH, "fonts" );
+					harden( "SOURCE_FONT_PATH", sourceFontPath, global );
+
+					var destinationFontPath = path.resolve( DESTINATION_PATH, "fonts" );
+					harden( "DESTINATION_FONT_PATH", destinationFontPath, global );
+
+					var negatedFontPath = "!" + path.resolve( SOURCE_PATH, "fonts/**/*.*" );
+					harden( "NEGATED_FONT_PATH", negatedFontPath, global );
+
+					var destinationCSSPath = path.resolve( DESTINATION_PATH, "css" );
+					harden( "DESTINATION_CSS_PATH", destinationCSSPath, global );
+
+					var destinationStylePath = path.resolve( DESTINATION_PATH, "style" );
+					harden( "DESTINATION_STYLE_PATH", destinationStylePath, global );
+
+					/*:
+						We will have default support for the following file formats.
+					*/
+					var defaultImageFileFormatList = [
+						"jpg",
+						"jpeg",
+						"png",
+						"gif",
+						"svg",
+						"ico"
+					];
+
+					var imageFilePathList = _.union( defaultImageFileFormatList, 
+							option.imageFileFormatList || [ ] )
+						.map( function onEachImageFileFormat( imageFileFormat ){
+							return path.resolve( SOURCE_PATH, "**/*." + imageFileFormat );
+						} );
+					harden( "IMAGE_FILE_PATH_LIST", imageFilePathList, global );
+
+					var destinationImagePath = path.resolve( DESTINATION_PATH, "image" );
+					harden( "DESTINATION_IMAGE_PATH", destinationImagePath, global );
+
+					var scriptPathList = option.scriptPathList;
+					if( _.isEmpty( scriptPathList ) ){
+						scriptPathList = [ 
+							path.resolve( SOURCE_PATH, "**/*.js" ),
+							path.resolve( SOURCE_PATH, "**/*.jsx" )
+						];
+
+						harden( "ORDERED_SCRIPT", false, global );
+					
+					}else{
+						harden( "ORDERED_SCRIPT", true, global );
+					}
+
+					harden( "SCRIPT_PATH_LIST", scriptPathList, global );
+
+					var destinationJSPath = path.resolve( DESTINATION_PATH, "js" );
+					harden( "DESTINATION_JS_PATH", destinationJSPath, global );
+
+					var destinationScriptPath = path.resolve( DESTINATION_PATH, "script" );
+					harden( "DESTINATION_SCRIPT_PATH", destinationScriptPath, global );
+
+					callback( null, file );
+				} ) );
 		} );
-
-	gulp.task( "link-library", [
-		"clean-library",
-		"copy-library"
-	] );
-
-	//: This will remove only those that are older in the client/library
-	gulp.task( "clean-library",
-		function cleanTask( ){
-			return gulp
-				.src( "client/library", { "read": false } )
-				.pipe( plumber( ) )
-				.pipe( changed( "temp/library" ) )
-				.pipe( vinylPaths( del ) );
-		} );
-
-	var libraryPaths = [
-		"bower_components/*/*.css",
-		"bower_components/*/*.map",
-		"bower_components/*/*.js",
-		"bower_components/*/*.eot",
-		"bower_components/*/*.svg",
-		"bower_components/*/*.ttf",
-		"bower_components/*/*.woff",
-
-		"bower_components/*/dist/**/*.eot",
-		"bower_components/*/dist/**/*.svg",
-		"bower_components/*/dist/**/*.ttf",
-		"bower_components/*/dist/**/*.woff",
-		"bower_components/*/dist/**/*.css",
-		"bower_components/*/dist/**/*.map",
-		"bower_components/*/dist/**/*.js",
-
-		"bower_components/*/lib/**/*.js",
-
-		"bower_components/*/build/**/*.js",
-		"bower_components/*/build/**/*.css",
-
-		"bower_components/*/css/*.css",
-
-		"bower_components/*/fonts/*.eot",
-		"bower_components/*/fonts/*.svg",
-		"bower_components/*/fonts/*.ttf",
-		"bower_components/*/fonts/*.woff"
-	];
 
 	gulp.task( "copy-library",
-		[ "clean-library" ],
+		[ 
+			"initialize" 
+		],
 		function copyTask( ){
 			return gulp
-				.src( libraryPaths.concat( options.libraryExceptions ) )
+				.src( LIBRARY_PATH_LIST )
+				
 				.pipe( plumber( ) )
-				.pipe( cached( "library", { "optimizeMemory": true } ) )
+				
 				.pipe( flatten( ) )
-				.pipe( gulp.dest( "temp/library" ) )
-				.pipe( changed( "temp/library" ) )
-				.pipe( gulp.dest( "client/library" ) );
+				
+				.pipe( changed( SOURCE_LIBRARY_PATH ) )
+				
+				.pipe( gulp.dest( SOURCE_LIBRARY_PATH ) );
 		} );
 
-	gulp.task( "build", [
-		"clean-build",
-		"build-script",
-		"build-library",
-		"build-font",
-		"build-less",
-		"build-style",
-		"build-image",
-		"build-index"
-	] );
-
-	gulp.task( "clean-build",
-		[ "clean-library", "copy-library" ],
-		function cleanTask( ){
-			var sourcePaths = [ "build" ];
-
-			if( argv.custom ){
-				sourcePaths.push( [ "build", argv.custom ].join( "-" ) );
-			}
-
+	gulp.task( "build-library",
+		[ 
+			"initialize", 
+			"copy-library" 
+		],
+		function buildLibrary( ){
 			return gulp
-				.src( sourcePaths, { "read": false } )
+				.src( path.resolve( SOURCE_LIBRARY_PATH, "*.*" ) )
+				
 				.pipe( plumber( ) )
-				.pipe( changed( "client" ) )
-				.pipe( vinylPaths( del ) );
+				
+				.pipe( changed( DESTINATION_LIBRARY_PATH ) )
+				
+				.pipe( gulp.dest( DESTINATION_LIBRARY_PATH ) )
 		} );
 
-	gulp.task( "build-script",
-		[ "clean-build" ],
+	gulp.task( "build-font",
+		[ 
+			"initialize",
+			"copy-library" 
+		],
 		function buildTask( ){
 			var stream = gulp
-				.src( scriptList )
+				.src( [
+					path.resolve( SOURCE_LIBRARY_PATH, "*.eot" ),
+					path.resolve( SOURCE_LIBRARY_PATH, "*.svg" ),
+					path.resolve( SOURCE_LIBRARY_PATH, "*.ttf" ),
+					path.resolve( SOURCE_LIBRARY_PATH, "*.woff" )
+				] )
+				
 				.pipe( plumber( ) )
-				.pipe( cached( "script:build", { "optimizeMemory": true } ) )
-				.pipe( map( function attachTemplate( file, callback ){
+				
+				.pipe( changed( SOURCE_FONT_PATH ) )
+				
+				.pipe( gulp.dest( SOURCE_FONT_PATH ) )
+				
+				.pipe( gulp.dest( DESTINATION_FONT_PATH ) );
+		} );
+
+	gulp.task( "build-sass",
+		[ 
+			"initialize"
+		],
+		function buildSASS( ){
+			return gulp
+				.src( [
+					path.resolve( SOURCE_PATH, "**/*.scss" ),
+					NEGATED_LIBRARY_PATH
+				] )
+				
+				.pipe( plumber( ) )
+				
+				.pipe( cached( "sass:build", { "optimizeMemory": true } ) )
+				
+				.pipe( sass( ) )
+				
+				.pipe( rename( [ APPLICATION_NAME, "sass.css" ].join( "." ) ) )
+				
+				.pipe( gulp.dest( DESTINATION_CSS_PATH ) );
+		} );
+
+	gulp.task( "build-less",
+		[ 
+			"initialize"
+		],
+		function buildLESS( ){
+			return gulp
+				.src( [
+					path.resolve( SOURCE_PATH, "**/*.less" ),
+					NEGATED_LIBRARY_PATH
+				] )
+				
+				.pipe( plumber( ) )
+				
+				.pipe( cached( "less:build", { "optimizeMemory": true } ) )
+				
+				.pipe( less( ) )
+				
+				.pipe( rename( [ APPLICATION_NAME, "less.css" ].join( "." ) ) )
+				
+				.pipe( gulp.dest( DESTINATION_CSS_PATH ) );
+		} );
+
+	gulp.task( "build-css",
+		[ 
+			"initialize" 
+		],
+		function buildCSS( ){
+			return gulp
+				.src( [
+					path.resolve( SOURCE_PATH, "**/*.css" ),
+					NEGATED_LIBRARY_PATH
+				] )
+				
+				.pipe( plumber( ) )
+				
+				.pipe( cached( "css:build", { "optimizeMemory": true } ) )
+				
+				.pipe( gulp.dest( DESTINATION_CSS_PATH ) );
+		} );
+
+	gulp.task( "build-style",
+		[ 
+			"initialize",
+			"build-sass",
+			"build-less",
+			"build-css"
+		], 
+		function buildStyle( ){
+			if( TERRAFORM_MODE == "cloud" ){
+				return gulp
+					.src( path.resolve( DESTINATION_CSS_PATH, "*.css" ) )
+					
+					.pipe( plumber( ) )
+
+					.pipe( order( [
+						"**/*.sass.css",
+						"**/*.less.css",
+						"**/*.css"
+					] ) )
+					
+					.pipe( concat( [ APPLICATION_NAME, "css" ].join( "." ) ) )
+
+					.pipe( gulp.dest( DESTINATION_STYLE_PATH ) )
+
+					.pipe( sourcemap.init( ) )
+					
+					.pipe( cssnano( ) )
+
+					.pipe( sourcemap.write( DESTINATION_STYLE_PATH ) )
+
+					.pipe( rename( [ APPLICATION_NAME, "min.css" ].join( "." ) ) )
+					
+					.pipe( changed( DESTINATION_STYLE_PATH ) )
+
+					.pipe( gulp.dest( DESTINATION_STYLE_PATH ) );
+			
+			}else{
+				return gulp
+					.src( path.resolve( DESTINATION_CSS_PATH, "*.css" ) )
+					
+					.pipe( plumber( ) )
+
+					.pipe( order( [
+						"**/*.sass.css",
+						"**/*.less.css",
+						"**/*.css"
+					] ) )
+					
+					.pipe( concat( [ APPLICATION_NAME, "css" ].join( "." ) ) )
+					
+					.pipe( changed( DESTINATION_STYLE_PATH ) )
+					
+					.pipe( gulp.dest( DESTINATION_STYLE_PATH ) );
+			}
+		} );
+
+	gulp.task( "build-image",
+		[ 
+			"initialize"
+		],
+		function buildImage( ){
+			return gulp
+				.src( _.union( [
+						NEGATED_LIBRARY_PATH,
+						NEGATED_FONT_PATH
+					], IMAGE_FILE_PATH_LIST ) )
+				
+				.pipe( plumber( ) )
+				
+				.pipe( changed( DESTINATION_IMAGE_PATH ) ) 
+				
+				.pipe( gulp.dest( DESTINATION_IMAGE_PATH ) )
+		} );
+
+	
+	gulp.task( "compile-script",
+		[ 
+			"initialize"
+		],
+		function compileScript( ){
+			return gulp
+				.src( _.union( [
+						NEGATED_LIBRARY_PATH
+					], SCRIPT_PATH_LIST ) )
+				
+				.pipe( plumber( ) )
+				
+				.pipe( cached( "script:compile", { "optimizeMemory": true } ) )
+				
+				/*.pipe( map( function attachTemplate( file, callback ){
 					var fileContent = file.contents.toString( "utf8" );
-
-					var templateFilePath = ( fileContent.match( TEMPLATE_PATTERN ) || [ ] )[ 1 ];
-
-					while( templateFilePath ){
-						templateFilePath = path.resolve( pathSteps, "client", templateFilePath );
-
-						fileContent = fileContent.replace( TEMPLATE_PATTERN, [
-							" (", fs.readFileSync( templateFilePath ), ");"
-						].join( "\n" ) );
-
-						templateFilePath = ( fileContent.match( TEMPLATE_PATTERN ) || [ ] )[ 1 ];
-					}
 
 					file.contents = new Buffer( fileContent );
 
@@ -415,463 +534,181 @@ var terraforma = function terraforma( options ){
 				.pipe( map( function attachSubTemplate( file, callback ){
 					var fileContent = file.contents.toString( "utf8" );
 
-					var templateFilePath = ( fileContent.match( SUB_TEMPLATE_PATTERN ) || [ ] )[ 1 ];
+					
+					file.contents = new Buffer( fileContent );
 
-					while( templateFilePath ){
-						templateFilePath = path.resolve( pathSteps, "client", templateFilePath );
+					callback( null, file );
+				} ) )*/
+				
+				.pipe( babel( {
+					"presets": [ "es2015" ]
+				} ) )
+				
+				.pipe( gulp.dest( DESTINATION_JS_PATH ) );
+		} );
 
-						fileContent = fileContent.replace( SUB_TEMPLATE_PATTERN, [
-							"", fs.readFileSync( templateFilePath ), ""
-						].join( "\n" ) );
+	//: All react files should be in jsx.
+	gulp.task( "compile-react",
+		[ 
+			"initialize"
+		],
+		function compileReact( ){
+			return gulp
+				.src( [
+					NEGATED_LIBRARY_PATH,
+					path.resolve( SOURCE_PATH, "**/*.jsx" )
+				] )
+				
+				.pipe( plumber( ) )
+				
+				.pipe( cached( "script:compile", { "optimizeMemory": true } ) )
+				
+				/*.pipe( map( function attachTemplate( file, callback ){
+					var fileContent = file.contents.toString( "utf8" );
 
-						templateFilePath = ( fileContent.match( SUB_TEMPLATE_PATTERN ) || [ ] )[ 1 ];
+					var templateList = parameta( fileContent ).template || [ ];
+					if( templateList.length > 1 ){
+						templateList.forEach( function onEachTemplate( template ){
+							var templatePath = path.resolve( SOURCE_PATH, template.execute( ) );
+
+							if( fs.existsSync( templatePath ) ){
+								var templateContent = fs.readFileSync( templatePath, "utf8" );
+
+								template
+									.change( templateContent )
+									.persist( );
+							
+							}else{
+								console.log( "template", templatePath, "does not exists" );
+							}	
+						} );
 					}
+
+					fileContent = templateList.raw;
 
 					file.contents = new Buffer( fileContent );
 
 					callback( null, file );
+				} ) )*/
+				
+				.pipe( babel( {
+					"presets": [ "react" ]
 				} ) )
-				.pipe( react( ) )
-				.pipe( replace( MODE_PATTERN, MODE_REPLACER ) )
-				.pipe( replace( ADMINISTRATOR_SPECIFIC_MODE_PATTERN, ADMINISTRATOR_SPECIFIC_MODE_REPLACER ) )
-				.pipe( replace( ADMINISTRATOR_GENERAL_MODE_PATTERN, ADMINISTRATOR_GENERAL_MODE_REPLACER ) )
-				.pipe( replace( CLIENT_MODE_PATTERN, CLIENT_MODE_REPLACER ) );
-
-			if( argv.custom ){
-				stream = stream
-					.pipe( replace( CUSTOM_MODE_PATTERN, CUSTOM_MODE_REPLACER ) )
-			}
-
-			stream = stream
-				.pipe( replace( CLEAN_UP_PATTERN, "" ) )
-				.pipe( remember( "script:build" ) )
-				.pipe( sourcemaps.init( ) )
-				.pipe( concat( [ APPLICATION_NAME, "js" ].join( "." ) ) )
-				.pipe( gulp.dest( "build/script" ) );
-
-			var customBuildPath = "";
-
-			if( argv.custom ){
-				customBuildPath = "build/script"
-					.replace( "build",
-						[ "build", argv.custom ].join( "-" ) );
-
-				stream = stream
-					.pipe( gulp.dest( customBuildPath ) );
-			}
-
-			stream = stream
-				.pipe( uglify( ) )
-				.pipe( rename( [ APPLICATION_NAME, "min", "js" ].join( "." ) ) )
-				.pipe( sourcemaps.write( "./" ) )
-				.pipe( gulp.dest( "build/script" ) );
-
-			if( argv.custom ){
-				return stream
-					.pipe( gulp.dest( customBuildPath ) );
-
-			}else{
-				return stream;
-			}
+				
+				.pipe( gulp.dest( DESTINATION_JS_PATH ) );
 		} );
 
-	gulp.task( "build-library",
-		[ "clean-library", "copy-library", "clean-build" ],
-		function buildTask( ){
-			var stream = gulp
-				.src( "client/library/*.*" )
-				.pipe( plumber( ) )
-				.pipe( cached( "library:build", { "optimizeMemory": true } ) )
-				.pipe( gulp.dest( "build/library" ) );
+	gulp.task( "build-script",
+		[ 
+			"initialize", 
+			"compile-react", 
+			"compile-script" 
+		],
+		function buildScript( ){
+			if( TERRAFORM_MODE == "cloud" ){
+				return gulp
+					.src( path.resolve( DESTINATION_JS_PATH, "*.js" ) )
 
-			if( argv.custom ){
-				var customBuildPath = "build/library"
-					.replace( "build",
-						[ "build", argv.custom ].join( "-" ) );
+					.pipe( plumber( ) )
 
-				return stream
-					.pipe( gulp.dest( customBuildPath ) );
+					.pipe( concat( [ APPLICATION_NAME, "js" ].join( "." ) ) )
 
-			}else{
-				return stream;
-			}
-		} );
+					.pipe( gulp.dest( DESTINATION_SCRIPT_PATH ) )
 
-	gulp.task( "build-font",
-		[ "build-library" ],
-		function buildTask( ){
-			var stream = gulp
-				.src( [
-					"client/library/*.eot",
-					"client/library/*.svg",
-					"client/library/*.ttf",
-					"client/library/*.woff"
-				] )
-				.pipe( plumber( ) )
-				.pipe( cached( "font:build", { "optimizeMemory": true } ) )
-				.pipe( gulp.dest( "client/fonts" ) )
-				.pipe( gulp.dest( "build/fonts" ) );
+					.pipe( sourcemap.init( ) )
 
-			if( argv.custom ){
-				var customBuildPath = "build/fonts"
-					.replace( "build",
-						[ "build", argv.custom ].join( "-" ) );
+					.pipe( uglify( {
+						"comments": ( /\/\/\:\!|\/\*\:\!/ )
+					} ) )
 
-				return stream
-					.pipe( gulp.dest( customBuildPath ) );
+					.pipe( sourcemap.write( DESTINATION_SCRIPT_PATH ) )
+
+					.pipe( rename( [ APPLICATION_NAME, "min.js" ].join( "." ) ) )
+
+					.pipe( changed( DESTINATION_SCRIPT_PATH ) )
+
+					.pipe( gulp.dest( DESTINATION_SCRIPT_PATH ) )
 
 			}else{
-				return stream;
-			}
-		} );
+				return gulp
+					.src( path.resolve( DESTINATION_JS_PATH, "*.js" ) )
 
-	gulp.task( "build-less",
-		[ "clean-build" ],
-		function buildTask( ){
-			return gulp
-				.src( "client/style/*.less" )
-				.pipe( plumber( ) )
-				.pipe( cached( "less:build", { "optimizeMemory": true } ) )
-				.pipe( remember( "less:build" ) )
-				.pipe( less( ) )
-				.pipe( filter( [ "app.css" ] ) )
-				.pipe( rename( [ APPLICATION_NAME, "css" ].join( "." ) ) )
-				.pipe( gulp.dest( "temp/style" ) );
-		} );
+					.pipe( plumber( ) )
 
-	gulp.task( "build-style",
-		[ "clean-build", "build-less" ],
-		function buildTask( ){
-			var stream = gulp
-				.src( "temp/style/*.css" )
-				.pipe( plumber( ) )
-				.pipe( gulp.dest( "build/style" ) );
+					.pipe( concat( [ APPLICATION_NAME, "js" ].join( "." ) ) )
 
-			var customBuildPath = "";
-			if( argv.custom ){
-				customBuildPath = "build/style"
-					.replace( "build",
-						[ "build", argv.custom ].join( "-" ) );
-
-				stream = stream
-					.pipe( gulp.dest( customBuildPath ) );
-			}
-
-			stream = stream
-				.pipe( sourcemaps.init( ) )
-				.pipe( minifyCSS( { "keepBreaks": true } ) )
-				.pipe( rename( [ APPLICATION_NAME, "min", "css" ].join( "." ) ) )
-				.pipe( sourcemaps.write( "./" ) )
-				.pipe( gulp.dest( "build/style" ) );
-
-			if( argv.custom ){
-				return stream
-					.pipe( gulp.dest( customBuildPath ) );
-
-			}else{
-				return stream;
-			}
-		} );
-
-	gulp.task( "build-image",
-		[ "clean-build" ],
-		function buildTask( ){
-			var stream = gulp
-				.src( "client/image/*.*" )
-				.pipe( plumber( ) )
-				.pipe( cached( "image:build", { "optimizeMemory": true } ) )
-				.pipe( gulp.dest( "build/image" ) );
-
-			if( argv.custom ){
-				var customBuildPath = "build/image"
-					.replace( "build",
-						[ "build", argv.custom ].join( "-" ) );
-
-				return stream
-					.pipe( gulp.dest( customBuildPath ) );
-
-			}else{
-				return stream;
-			}
+					.pipe( gulp.dest( DESTINATION_SCRIPT_PATH ) );
+			}	
 		} );
 
 	gulp.task( "build-index",
-		[ "clean-build" ],
-		function buildTask( ){
-			var stream = gulp
-				.src( "client/index.html" )
-				.pipe( plumber( ) )
-				.pipe( replace( INCLUDE_SCRIPT_PATTERN, INCLUDE_SCRIPT_REPLACER ) )
-				.pipe( replace( INCLUDE_STYLE_PATTERN, INCLUDE_STYLE_REPLACER ) )
-				.pipe( replace( MINIFIED_SCRIPT_PATTERN, "." ) )
-				.pipe( replace( MINIFIED_STYLE_PATTERN, "." ) )
-				.pipe( replace( DEVELOPMENT_MODE_PATTERN, DEVELOPMENT_MODE_REPLACER ) )
-				.pipe( replace( ADMINISTRATOR_SPECIFIC_MODE_PATTERN, ADMINISTRATOR_SPECIFIC_MODE_REPLACER ) )
-				.pipe( replace( ADMINISTRATOR_GENERAL_MODE_PATTERN, ADMINISTRATOR_GENERAL_MODE_REPLACER ) )
-				.pipe( replace( CLIENT_MODE_PATTERN, CLIENT_MODE_REPLACER ) );
-
-			if( argv.custom ){
-				stream = stream
-					.pipe( replace( CUSTOM_MODE_PATTERN, CUSTOM_MODE_REPLACER ) );
-			}
-
-			stream = stream
-				.pipe( replace( CLEAN_UP_PATTERN, "" ) )
-				.pipe( embedlr( ) )
-				.pipe( gulp.dest( "build" ) );
-
-			if( argv.custom ){
-				var customBuildPath = [ "build", argv.custom ].join( "-" );
-
-				return stream
-					.pipe( gulp.dest( customBuildPath ) );
-
-			}else{
-				return stream;
-			}
+		[ 
+			"initialize"
+		],
+		function buildIndex( ){
+			
 		} );
 
-
-	gulp.task( "deploy", [
-		"clean-deploy",
-		"deploy-script",
-		"deploy-library",
-		"deploy-font",
-		"deploy-style",
-		"deploy-image",
-		"deploy-index"
+	gulp.task( "build", [
+		"initialize",
+		
+		"copy-library",
+		"build-library",
+		"build-font",
+		
+		"build-image",
+		
+		"build-sass",
+		"build-less",
+		"build-css",
+		"build-style",
+		
+		"compile-react",
+		"compile-script",
+		"build-script",
+		
+		"build-index"
 	] );
 
-	gulp.task( "clean-deploy",
-		[ "clean-library", "copy-library", "clean-build", "build-library" ],
-		function cleanTask( ){
-			var sourcePaths = [ "deploy" ];
-
-			if( argv.custom ){
-				sourcePaths.push( [ "deploy", argv.custom ].join( "-" ) );
-			}
-
+	//: This will clean the library at the source only.
+	gulp.task( "clean-library",
+		[ 
+			"initialize"
+		],
+		function cleanLibrary( ){
 			return gulp
-				.src( "deploy", { "read": false } )
+				.src( SOURCE_LIBRARY_PATH, { "read": false } )
+				
 				.pipe( plumber( ) )
-				.pipe( vinylPaths( del ) );
+				
+				.pipe( vinylPath( del ) );
 		} );
 
-	gulp.task( "deploy-script",
-		[ "clean-build", "build-script", "clean-deploy" ],
-		function deployTask( ){
-			var stream = gulp
-				.src( [
-					"build/script/*.js",
-					"build/script/*.map"
-				] )
-				.pipe( plumber( ) )
-				.pipe( cached( "script:deploy", { "optimizeMemory": true } ) )
-				.pipe( gulp.dest( "deploy/script" ) );
-
-			if( argv.custom ){
-				var customDeployPath = "deploy/script"
-					.replace( "deploy",
-						[ "deploy", argv.custom ].join( "-" ) );
-
-				return stream
-					.pipe( gulp.dest( customDeployPath ) );
-
-			}else{
-				return stream;
-			}
-		} );
-
-	gulp.task( "deploy-library",
-		[ "clean-library", "copy-library", "clean-build", "build-library", "clean-deploy" ],
-		function deployTask( ){
-			var stream = gulp
-				.src( "build/library/*.*" )
-				.pipe( plumber( ) )
-				.pipe( cached( "library:deploy", { "optimizeMemory": true } ) )
-				.pipe( gulp.dest( "deploy/library" ) );
-
-			if( argv.custom ){
-				var customDeployPath = "deploy/library"
-					.replace( "deploy",
-						[ "deploy", argv.custom ].join( "-" ) );
-
-				return stream
-					.pipe( gulp.dest( customDeployPath ) );
-
-			}else{
-				return stream;
-			}
-		} );
-
-	gulp.task( "deploy-font",
-		[ "deploy-library" ],
-		function deployTask( ){
-			var stream = gulp
-				.src( [
-					"build/library/*.eot",
-					"build/library/*.svg",
-					"build/library/*.ttf",
-					"build/library/*.woff"
-				] )
-				.pipe( plumber( ) )
-				.pipe( cached( "font:deploy", { "optimizeMemory": true } ) )
-				.pipe( gulp.dest( "deploy/fonts" ) );
-
-			if( argv.custom ){
-				var customDeployPath = "deploy/fonts"
-					.replace( "deploy",
-						[ "deploy", argv.custom ].join( "-" ) );
-
-				return stream
-					.pipe( gulp.dest( customDeployPath ) );
-
-			}else{
-				return stream;
-			}
-		} );
-
-	gulp.task( "deploy-style",
-		[ "clean-build", "build-less", "build-style", "clean-deploy" ],
-		function deployTask( ){
-			var stream = gulp
-				.src( [
-					"build/style/*.css",
-					"build/style/*.map"
-				] )
-				.pipe( plumber( ) )
-				.pipe( cached( "style:deploy", { "optimizeMemory": true } ) )
-				.pipe( gulp.dest( "deploy/style" ) );
-
-			if( argv.custom ){
-				var customDeployPath = "deploy/style"
-					.replace( "deploy",
-						[ "deploy", argv.custom ].join( "-" ) );
-
-				return stream
-					.pipe( gulp.dest( customDeployPath ) );
-
-			}else{
-				return stream;
-			}
-		} );
-
-	gulp.task( "deploy-image",
-		[ "clean-build", "clean-deploy" ],
-		function deployTask( ){
-			var stream = gulp
-				.src( "build/image/*.*" )
-				.pipe( plumber( ) )
-				.pipe( cached( "image:deploy", { "optimizeMemory": true } ) )
-				.pipe( gulp.dest( "deploy/image" ) );
-
-			if( argv.custom ){
-				var customDeployPath = "deploy/image"
-					.replace( "deploy",
-						[ "deploy", argv.custom ].join( "-" ) );
-
-				return stream
-					.pipe( gulp.dest( customDeployPath ) );
-
-			}else{
-				return stream;
-			}
-		} );
-
-	gulp.task( "deploy-index",
-		[ "clean-deploy" ],
-		function buildTask( ){
-			var stream = gulp
-				.src( "client/index.html" )
-				.pipe( plumber( ) )
-				.pipe( replace( INCLUDE_SCRIPT_PATTERN, INCLUDE_SCRIPT_REPLACER ) )
-				.pipe( replace( INCLUDE_STYLE_PATTERN, INCLUDE_STYLE_REPLACER ) )
-				.pipe( replace( PRODUCTION_MODE_PATTERN, PRODUCTION_MODE_REPLACER ) )
-				.pipe( replace( ADMINISTRATOR_SPECIFIC_MODE_PATTERN, ADMINISTRATOR_SPECIFIC_MODE_REPLACER ) )
-				.pipe( replace( ADMINISTRATOR_GENERAL_MODE_PATTERN, ADMINISTRATOR_GENERAL_MODE_REPLACER ) )
-				.pipe( replace( CLIENT_MODE_PATTERN, CLIENT_MODE_REPLACER ) );
-
-			if( argv.custom ){
-				stream = stream
-					.pipe( replace( CUSTOM_MODE_PATTERN, CUSTOM_MODE_REPLACER ) );
-			}
-
-			stream = stream
-				.pipe( replace( CLEAN_UP_PATTERN, "" ) )
-				.pipe( gulp.dest( "deploy" ) );
-
-			if( argv.custom ){
-				var customBuildPath = [ "deploy", argv.custom ].join( "-" );
-
-				return stream
-					.pipe( gulp.dest( customBuildPath ) );
-
-			}else{
-				return stream;
-			}
-		} );
-
-	gulp.task( "server-static",
-		function serverTask( done ){
-			var portNumber = process.config.port || process.env.PORT || 8000;
-			var server = connect( );
-			server
-				.use( serveStatic( "build" ) )
-				.listen( portNumber, "localhost", done );
-		} );
-
-	gulp.task( "reload", [ "build" ],
-		function reloadTask( done ){
-			livereload.reload( );
-			done( );
-		} );
-
-	gulp.task( "watch",
-		[
-			"clean-build",
-			"build-script",
-			"build-library",
-			"build-font",
-			"build-less",
-			"build-style",
-			"build-image",
-			"build-index",
-			"server-static"
+	//: This will delete everything from the build directory
+	gulp.task( "clean-build",
+		[ 
+			"initialize"
 		],
-		function watchTask( ){
-			livereload.listen( );
-			gulp.watch( [
-				"client/script/**",
-				"client/style/**",
-				"client/template/**",
-				"client/index.html",
-				scriptListPath
-			].concat( libraryPaths ),
-			[ "reload" ] );
+		function cleanBuild( ){
+			return gulp
+				.src( DESTINATION_PATH, { "read": false } )
+				
+				.pipe( plumber( ) )
+				
+				.pipe( vinylPath( del ) );
 		} );
 
-	gulp.task( "serverless-watch",
-		[
-			"clean-build",
-			"build-script",
-			"build-library",
-			"build-font",
-			"build-less",
-			"build-style",
-			"build-image",
-			"build-index"
-		],
-		function watchTask( ){
-			livereload.listen( );
-			gulp.watch( [
-				"client/script/**",
-				"client/style/**",
-				"client/template/**",
-				"client/index.html",
-				scriptListPath
-			].concat( libraryPaths ),
-			[ "reload" ] );
-		} );
-}
+	gulp.task( "clean", [
+		"initialize",
+		"clean-library",
+		"clean-build"
+	] );
+
+	gulp.task( "default", [
+		"initialize",
+		"clean",
+		"build"
+	] );
+};
 
 module.exports = terraforma;
