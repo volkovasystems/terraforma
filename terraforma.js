@@ -42,6 +42,12 @@
 	@module-documentation:
 		This is a straightforward mega function that configures
 			your basic gulp tasks towards a concise and specified architecture.
+
+		It has 4 basic options,
+			1. cloud
+			2. ground
+			3. water
+			4. moon
 	@end-module-documentation	
 */
 
@@ -106,8 +112,10 @@ var terraforma = function terraforma( option ){
 				
 				.pipe( map( function attachTemplate( file, callback ){
 					//: Prioritize given parameter options over configuration.
-					option = _.extend( option || { },
-						JSON.parse( file.contents.toString( "utf8" ) || "{ }" ) );
+					var earthOption = JSON.parse( file.contents.toString( "utf8" ) || "{ }" );
+
+					option = _.extend( earthOption, option || { } );
+					
 					harden( "OPTION", option, global );
 
 					/*:
@@ -150,21 +158,19 @@ var terraforma = function terraforma( option ){
 						mode = "ground";
 					
 					}else if( argv.ios ){
-						mode = "mobile:ios";
+						mode = "moon:ios";
 					
 					}else if( argv.android ){
-						mode = "mobile:android";
+						mode = "moon:android";
 					
-					}else if( argv.mobile ){
-						mode = "mobile";
+					}else if( argv.moon ){
+						mode = "moon";
 					
 					}else if( !mode ){
 						mode = "water";
 					}
 
-					harden( "TERRAFORM_MODE", 
-						mode.split( ":" )[ 0 ], 
-						global );
+					harden( "TERRAFORM_MODE", mode.split( ":" )[ 0 ], global );
 
 					if( (/^moon\:/).test( mode ) ){
 						harden( "MOBILE_MODE", mode.split( ":" )[ 1 ], global );
@@ -190,7 +196,7 @@ var terraforma = function terraforma( option ){
 					harden( "SOURCE_PATH", 
 						path.resolve( ROOT_DIRECTORY, 
 							argv.sourcePath || 
-							option[ TERRAFORM_MODE || "water" ].sourcePath ||
+							option[ TERRAFORM_MODE ].sourcePath ||
 							option.sourcePath || 
 							"client" ),
 						global );
@@ -200,7 +206,7 @@ var terraforma = function terraforma( option ){
 							[ 
 								( argv.destinationPath || 
 								( global.MOBILE_MODE? MOBILE_MODE : "" ) ||
-								option[ TERRAFORM_MODE || "water" ].destinationPath ||
+								option[ TERRAFORM_MODE ].destinationPath ||
 								option.destinationPath ),
 								APPLICATION_NAME
 							].join( "-" ) ),
@@ -312,6 +318,11 @@ var terraforma = function terraforma( option ){
 
 					var destinationScriptPath = path.resolve( DESTINATION_PATH, "script" );
 					harden( "DESTINATION_SCRIPT_PATH", destinationScriptPath, global );
+
+					if( options.indexPath ){
+						var indexPath = path.resolve( ROOT_DIRECTORY, options.indexPath );
+						harden( "INDEX_PATH", indexPath, global );
+					}
 
 					callback( null, file );
 				} ) );
@@ -646,7 +657,18 @@ var terraforma = function terraforma( option ){
 			"initialize"
 		],
 		function buildIndex( ){
-			
+			return gulp
+				.src( INDEX_PATH )
+
+				/*.pipe( map( function attachTemplate( file, callback ){
+					var fileContent = file.contents.toString( "utf8" );
+
+					file.contents = new Buffer( fileContent );
+
+					callback( null, file );
+				} ) )*/				
+
+				.pipe( gulp.dest( path.resolve( DESTINATION_PATH ) ) );						
 		} );
 
 	gulp.task( "build", [

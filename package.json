@@ -1,8 +1,8 @@
 {
   "name": "terraforma",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "description": "Gulp based, client files transform processor following strict architecture and specifications.",
-  "main": "terraforma.js",
+  "main": "terraforma.min.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -51,5 +51,8 @@
   },
   "devDependencies": {
     "pita": "^0.2.1"
+  },
+  "bin": {
+    "terraform": "./terraform.js"
   }
 }
