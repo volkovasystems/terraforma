@@ -88,9 +88,21 @@ var terraforma = function terraforma( option ){
 
 			try{
 				if( !fs.existsSync( earthJSONPath ) ){
-					var template = fs.readFileSync( "./earth.template.json", "utf8" );
-
-					template = JSON.parse( template );
+					var template = {
+						"appName": "app",
+						"sourcePath": "client",
+						"destinationPath": "build",
+						"libraryPathList": [ ],
+						"scriptPathList": [ ],
+						"cloud": {
+							"destinationPath": "deploy"
+						},
+						"ground": {
+							"destinationPath": "stage"
+						},
+						"water": { },
+						"mobile": { }
+					};
 
 					template = _.cloneDeep( _.extend( template, option ) );
 
