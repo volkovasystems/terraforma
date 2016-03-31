@@ -82,7 +82,7 @@ var terraforma = function terraforma( option ){
 
 	gulp.task( "initialize",
 		function initializeTask( ){
-			harden( "ROOT_DIRECTORY", __dirname, global );
+			harden( "ROOT_DIRECTORY", process.cwd( ), global );
 			
 			var earthJSONPath = path.resolve( ROOT_DIRECTORY, "earth.json" );
 
