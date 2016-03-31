@@ -76,11 +76,14 @@ var cssnano = require( "gulp-cssnano" );
 var sourcemap = require( "gulp-sourcemaps" );
 var order = require( "gulp-order" );
 
-harden( "ROOT_DIRECTORY", __dirname, global );
-
 var terraforma = function terraforma( option ){
+	//: This will let you add tasks.
+	gulp = option.$gulp || gulp;
+
 	gulp.task( "initialize",
 		function initializeTask( ){
+			harden( "ROOT_DIRECTORY", __dirname, global );
+			
 			var earthJSONPath = path.resolve( ROOT_DIRECTORY, "earth.json" );
 
 			try{
@@ -89,7 +92,13 @@ var terraforma = function terraforma( option ){
 
 					template = JSON.parse( template );
 
-					template = _.extend( template, option );
+					template = _.cloneDeep( _.extend( template, option ) );
+
+					for( var property in template ){
+						if( /^\$/.test( property ) ){
+							delete template[ property ]; 
+						}
+					}
 
 					template = JSON.stringify( template, null, "\t" );
 
@@ -149,7 +158,7 @@ var terraforma = function terraforma( option ){
 								-build as a web app for mobile devices
 								-creates a mobile folder
 					*/
-					var mode = argv.mode || option.mode;
+					var mode = argv.mode || option.mode || option.$mode;
 
 					if( argv.cloud ){
 						mode = "cloud";
@@ -319,9 +328,13 @@ var terraforma = function terraforma( option ){
 					var destinationScriptPath = path.resolve( DESTINATION_PATH, "script" );
 					harden( "DESTINATION_SCRIPT_PATH", destinationScriptPath, global );
 
-					if( options.indexPath ){
-						var indexPath = path.resolve( ROOT_DIRECTORY, options.indexPath );
+					if( option.indexPath ){
+						var indexPath = path.resolve( ROOT_DIRECTORY, option.indexPath );
 						harden( "INDEX_PATH", indexPath, global );
+					
+					}else{
+						var indexPath = path.resolve( ROOT_DIRECTORY, "client/index.html" );
+						harden( "INDEX_PATH", indexPath, global );	
 					}
 
 					callback( null, file );
@@ -654,7 +667,15 @@ var terraforma = function terraforma( option ){
 
 	gulp.task( "build-index",
 		[ 
-			"initialize"
+			"initialize",
+			
+			"build-library",
+			"build-font",
+			"build-image",
+
+			"build-style",
+			
+			"build-script"
 		],
 		function buildIndex( ){
 			return gulp
@@ -731,6 +752,8 @@ var terraforma = function terraforma( option ){
 		"clean",
 		"build"
 	] );
+
+	return gulp;
 };
 
 module.exports = terraforma;
