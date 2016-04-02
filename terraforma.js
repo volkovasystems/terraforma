@@ -75,6 +75,8 @@ var uglify = require( "gulp-uglify" );
 var cssnano = require( "gulp-cssnano" );
 var sourcemap = require( "gulp-sourcemaps" );
 var order = require( "gulp-order" );
+var es2015Preset = require( "babel-preset-es2015" );
+var reactPreset = require( "babel-preset-react" );
 
 var terraforma = function terraforma( option ){
 	//: This will let you add tasks.
@@ -421,6 +423,8 @@ var terraforma = function terraforma( option ){
 				] )
 				
 				.pipe( plumber( ) )
+
+				.pipe( flatten( ) )
 				
 				.pipe( cached( "sass:build", { "optimizeMemory": true } ) )
 				
@@ -443,6 +447,8 @@ var terraforma = function terraforma( option ){
 				] )
 				
 				.pipe( plumber( ) )
+
+				.pipe( flatten( ) )
 				
 				.pipe( cached( "less:build", { "optimizeMemory": true } ) )
 				
@@ -465,6 +471,8 @@ var terraforma = function terraforma( option ){
 				] )
 				
 				.pipe( plumber( ) )
+
+				.pipe( flatten( ) )
 				
 				.pipe( cached( "css:build", { "optimizeMemory": true } ) )
 				
@@ -539,6 +547,8 @@ var terraforma = function terraforma( option ){
 					], IMAGE_FILE_PATH_LIST ) )
 				
 				.pipe( plumber( ) )
+
+				.pipe( flatten( ) )
 				
 				.pipe( changed( DESTINATION_IMAGE_PATH ) ) 
 				
@@ -557,6 +567,8 @@ var terraforma = function terraforma( option ){
 					], SCRIPT_PATH_LIST ) )
 				
 				.pipe( plumber( ) )
+
+				.pipe( flatten( ) )
 				
 				.pipe( cached( "script:compile", { "optimizeMemory": true } ) )
 				
@@ -596,6 +608,8 @@ var terraforma = function terraforma( option ){
 				] )
 				
 				.pipe( plumber( ) )
+
+				.pipe( flatten( ) )
 				
 				.pipe( cached( "script:compile", { "optimizeMemory": true } ) )
 				
