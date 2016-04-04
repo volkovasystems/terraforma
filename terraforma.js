@@ -334,6 +334,9 @@ var terraforma = function terraforma( option ){
 						harden( "ORDERED_SCRIPT", true, global );
 					}
 
+					var destinationViewPath = path.resolve( DESTINATION_PATH, "view" );
+					harden( "DESTINATION_VIEW_PATH", destinationViewPath, global );
+
 					harden( "SCRIPT_PATH_LIST", scriptPathList, global );
 
 					var destinationJSPath = path.resolve( DESTINATION_PATH, "js" );
@@ -409,6 +412,46 @@ var terraforma = function terraforma( option ){
 				.pipe( gulp.dest( SOURCE_FONT_PATH ) )
 				
 				.pipe( gulp.dest( DESTINATION_FONT_PATH ) );
+		} );
+
+	gulp.task( "build-image",
+		[ 
+			"initialize"
+		],
+		function buildImage( ){
+			return gulp
+				.src( _.union( [
+						NEGATED_LIBRARY_PATH,
+						NEGATED_FONT_PATH
+					], IMAGE_FILE_PATH_LIST ) )
+				
+				.pipe( plumber( ) )
+
+				.pipe( flatten( ) )
+				
+				.pipe( changed( DESTINATION_IMAGE_PATH ) ) 
+				
+				.pipe( gulp.dest( DESTINATION_IMAGE_PATH ) )
+		} );
+
+	gulp.task( "build-view",
+		[ 
+			"initialize"
+		],
+		function buildImage( ){
+			return gulp
+				.src( [
+					NEGATED_LIBRARY_PATH,
+					path.resolve( SOURCE_PATH, "**/*.html" )
+				] )
+				
+				.pipe( plumber( ) )
+
+				.pipe( flatten( ) )
+				
+				.pipe( changed( DESTINATION_VIEW_PATH ) ) 
+				
+				.pipe( gulp.dest( DESTINATION_VIEW_PATH ) )
 		} );
 
 	gulp.task( "build-sass",
@@ -507,7 +550,7 @@ var terraforma = function terraforma( option ){
 					
 					.pipe( cssnano( ) )
 
-					.pipe( sourcemap.write( DESTINATION_STYLE_PATH ) )
+					.pipe( sourcemap.write( ) )
 
 					.pipe( rename( [ APPLICATION_NAME, "min.css" ].join( "." ) ) )
 					
@@ -534,27 +577,6 @@ var terraforma = function terraforma( option ){
 					.pipe( gulp.dest( DESTINATION_STYLE_PATH ) );
 			}
 		} );
-
-	gulp.task( "build-image",
-		[ 
-			"initialize"
-		],
-		function buildImage( ){
-			return gulp
-				.src( _.union( [
-						NEGATED_LIBRARY_PATH,
-						NEGATED_FONT_PATH
-					], IMAGE_FILE_PATH_LIST ) )
-				
-				.pipe( plumber( ) )
-
-				.pipe( flatten( ) )
-				
-				.pipe( changed( DESTINATION_IMAGE_PATH ) ) 
-				
-				.pipe( gulp.dest( DESTINATION_IMAGE_PATH ) )
-		} );
-
 	
 	gulp.task( "compile-script",
 		[ 
@@ -589,7 +611,7 @@ var terraforma = function terraforma( option ){
 				} ) )*/
 				
 				.pipe( babel( {
-					"presets": [ "es2015" ]
+					"presets": [ es2015Preset ]
 				} ) )
 				
 				.pipe( gulp.dest( DESTINATION_JS_PATH ) );
@@ -642,7 +664,7 @@ var terraforma = function terraforma( option ){
 				} ) )*/
 				
 				.pipe( babel( {
-					"presets": [ "react" ]
+					"presets": [ reactPreset ]
 				} ) )
 				
 				.pipe( gulp.dest( DESTINATION_JS_PATH ) );
@@ -671,7 +693,7 @@ var terraforma = function terraforma( option ){
 						"comments": ( /\/\/\:\!|\/\*\:\!/ )
 					} ) )
 
-					.pipe( sourcemap.write( DESTINATION_SCRIPT_PATH ) )
+					.pipe( sourcemap.write( ) )
 
 					.pipe( rename( [ APPLICATION_NAME, "min.js" ].join( "." ) ) )
 
@@ -726,6 +748,8 @@ var terraforma = function terraforma( option ){
 		"build-font",
 		
 		"build-image",
+
+		"build-view",
 		
 		"build-sass",
 		"build-less",
@@ -753,6 +777,19 @@ var terraforma = function terraforma( option ){
 				.pipe( vinylPath( del ) );
 		} );
 
+	gulp.task( "clean-font",
+		[ 
+			"initialize"
+		],
+		function cleanFont( ){
+			return gulp
+				.src( SOURCE_FONT_PATH, { "read": false } )
+				
+				.pipe( plumber( ) )
+				
+				.pipe( vinylPath( del ) );
+		} );
+
 	//: This will delete everything from the build directory
 	gulp.task( "clean-build",
 		[ 
@@ -770,6 +807,7 @@ var terraforma = function terraforma( option ){
 	gulp.task( "clean", [
 		"initialize",
 		"clean-library",
+		"clean-font",
 		"clean-build"
 	] );
 
