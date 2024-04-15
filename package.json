@@ -28,7 +28,7 @@
     "browser-sync": "^2.11.2",
     "chalk": "^1.1.1",
     "del": "^2.0.0",
-    "gulp": "^3.9.0",
+    "gulp": "^4.0.0",
     "gulp-api-log": "^0.1.1",
     "gulp-babel": "^6.1.2",
     "gulp-cached": "^1.1.0",
